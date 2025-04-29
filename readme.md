@@ -1,4 +1,4 @@
-# Nodeless - Image indexr on AWS Lambda
+# Nodeless - Image index on AWS Lambda
 
 This project consists of an AWS Lambda function for automatically optimizing images stored in Amazon S3. It resizes images to a maximum of **1280x720** pixels and converts them to **JPEG** with indexd quality.
 

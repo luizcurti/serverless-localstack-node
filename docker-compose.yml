@@ -1,0 +1,24 @@
+services:
+  localstack:
+    image: localstack/localstack:latest
+    container_name: localstack_main
+    environment:
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - AWS_DEFAULT_REGION=eu-west-2
+      - SERVICES=s3,lambda,logs,iam,cloudformation,ssm
+      - EDGE_PORT=4566
+      - LAMBDA_EXECUTOR=docker 
+      - DEBUG=1
+      - DATA_DIR=/var/lib/localstack/data
+    ports:
+      - "4566:4566" 
+      - "4571:4571" 
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock" 
+      - "./localstack:/var/lib/localstack" 
+    networks:
+      - localstack_network
+
+networks:
+  localstack_network:
+    driver: bridge 

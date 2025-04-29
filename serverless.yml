@@ -1,0 +1,73 @@
+service: nodeless
+
+frameworkVersion: '4'
+
+provider:
+  name: aws
+  runtime: nodejs22.x
+  region: eu-west-2
+  accountId: 000000000000 # Replace with your AWS account ID
+  environment:
+    BUCKET_NAME: s3-bucket
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - s3:GetObject
+        - s3:PutObject
+      Resource:
+        - "arn:aws:s3:::s3-bucket/*"
+    - Effect: Allow
+      Action:
+        - s3:ListBucket
+      Resource:
+        - "arn:aws:s3:::s3-bucket"
+
+plugins:
+  - serverless-offline
+  - serverless-localstack
+  - serverless-plugin-stage-variables
+
+custom:
+  localstack:
+    stages:
+      - dev
+    debug: true
+    endpoints:
+      s3: http://localhost:4566
+      lambda: http://localhost:4566
+    accountId: 000000000000 # Replace with your AWS account ID
+    telemetry: false
+  esbuild:
+    bundle: true
+    minify: false
+    sourcemap: true
+    target: node22
+    platform: node
+    concurrency: 10
+    external:
+      - sharp
+
+functions:
+  index:
+    handler: src/index.handle
+    role: arn:aws:iam::000000000000:role/LambdaS3Role
+    events:
+      - s3:
+          bucket: ${self:provider.environment.BUCKET_NAME}
+          event: s3:ObjectCreated:*
+          rules:
+            - prefix: uploads/
+            - suffix: .jpg
+      - s3:
+          bucket: ${self:provider.environment.BUCKET_NAME}
+          event: s3:ObjectCreated:*
+          rules:
+            - prefix: uploads/
+            - suffix: .png
+
+resources:
+  Resources:
+    MyBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: s3-bucket

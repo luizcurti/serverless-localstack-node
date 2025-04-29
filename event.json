@@ -1,0 +1,14 @@
+{
+  "Records": [
+    {
+      "s3": {
+        "bucket": {
+          "name": "s3-bucket"
+        },
+        "object": {
+          "key": "uploads/example-image.jpg"
+        }
+      }
+    }
+  ]
+}

@@ -6,7 +6,6 @@ provider:
   name: aws
   runtime: nodejs20.x
   region: eu-west-2
-  accountId: 000000000000 # Replace with your AWS account ID
   environment:
     BUCKET_NAME: s3-bucket
   iamRoleStatements:
@@ -27,6 +26,16 @@ plugins:
   - serverless-localstack
   - serverless-plugin-stage-variables
 
+build:
+  esbuild:
+    bundle: true
+    minify: false
+    sourcemap: true
+    target: node20
+    platform: node
+    external:
+      - sharp
+
 custom:
   localstack:
     stages:
@@ -37,20 +46,10 @@ custom:
       lambda: http://localhost:4566
     accountId: 000000000000 # Replace with your AWS account ID
     telemetry: false
-  esbuild:
-    bundle: true
-    minify: false
-    sourcemap: true
-    target: node22
-    platform: node
-    concurrency: 10
-    external:
-      - sharp
 
 functions:
   index:
     handler: src/index.handle
-    role: arn:aws:iam::000000000000:role/LambdaS3Role
     events:
       - s3:
           bucket: ${self:provider.environment.BUCKET_NAME}

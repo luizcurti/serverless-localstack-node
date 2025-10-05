@@ -42,16 +42,16 @@ jobs:
         flags: unittests
         name: codecov-umbrella
 
-    # Deploy to production
-    - name: Deploy to Production
-      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-      run: |
-        echo "🚀 Deploying to production environment..."
-        npx serverless deploy --stage prod --verbose
-      env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        AWS_DEFAULT_REGION: eu-west-2
+    # Deploy to production (commented out - requires Serverless Dashboard setup)
+    # - name: Deploy to Production
+    #   if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    #   run: |
+    #     echo "🚀 Deploying to production environment..."
+    #     serverless deploy --stage prod --verbose
+    #   env:
+    #     AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+    #     AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    #     AWS_DEFAULT_REGION: eu-west-2
 
     - name: ✅ Pipeline completed
       run: echo "Pipeline executado com sucesso! 🎉"

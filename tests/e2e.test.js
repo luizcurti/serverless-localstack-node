@@ -77,6 +77,8 @@ async function deleteObjects (keys) {
 // ─── setup/teardown ───────────────────────────────────────────────────────────
 
 beforeAll(async () => {
+  // Verificar se o S3 está acessível com um request real (o health check do
+  // LocalStack Pro retorna "running" em vez de "available", então não é confiável)
   try {
     await s3.send(new CreateBucketCommand({
       Bucket: BUCKET,
@@ -84,7 +86,8 @@ beforeAll(async () => {
     }));
   } catch (err) {
     // Bucket já existe — ok para re-runs
-    if (!['BucketAlreadyOwnedByYou', 'BucketAlreadyExists'].includes(err.name)) {
+    const EXPECTED = ['BucketAlreadyOwnedByYou', 'BucketAlreadyExists', 'IllegalLocationConstraintException'];
+    if (!EXPECTED.includes(err.name)) {
       throw new Error(
         `LocalStack não está acessível. Inicie com:\n  docker compose up -d\n\nErro original: ${err.message}`
       );

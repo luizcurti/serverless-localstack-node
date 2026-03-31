@@ -1,152 +1,135 @@
-# Serverless Image Processing with LocalStack# AWS Lambda resize image
+# Serverless Image Processing with LocalStack
 
+An AWS Lambda function that automatically compresses images uploaded to S3. It resizes images to a maximum of **1280x720** pixels and converts them to **JPEG** at 50% quality, saving the result in the `compressed/` prefix of the same bucket.
 
+## Features
 
-This project demonstrates how to build a serverless image processing service using AWS Lambda, S3, and LocalStack for local development.This project consists of an AWS Lambda function for automatically optimizing images stored in Amazon S3. It resizes images to a maximum of **1280x720** pixels and converts them to **JPEG** with indexd quality.
+- Triggered by S3 `ObjectCreated` events for `.jpg`, `.jpeg`, and `.png` files
+- Resizes images while preserving the original aspect ratio
+- Converts all supported formats to JPEG (50% quality, progressive)
+- Saves compressed images to the `compressed/` folder
+- Processes multiple images concurrently per invocation
+- Local development via LocalStack (no AWS account required)
 
+## Technologies
 
+- **Node.js 20.x**
+- **AWS Lambda + Amazon S3**
+- **Sharp** — high-performance image processing
+- **Serverless Framework v4**
+- **LocalStack** — local AWS emulation via Docker
+- **Jest** — unit and E2E test suite
+- **ESLint** (standard config)
 
-## Features## 📌 Features
-
-- Listens for image upload events in S3 (`.jpg` and `.png` files).
-
-- **Image Compression**: Automatically compresses images uploaded to S3- Resizes images while maintaining their original aspect ratio.
-
-- **Local Development**: Uses LocalStack for local AWS service emulation- Converts images to **JPEG** with 50% quality.
-
-- **Serverless Framework**: Deployed using the Serverless Framework- Saves the indexd version in the `compressed/` folder within the same bucket.
-
-- **Sharp Integration**: High-performance image processing using Sharp
-
-- **Testing**: Comprehensive test suite with Jest## 🚀 Technologies Used
-
-- **Code Quality**: ESLint for code standardization- **AWS Lambda**
-
-- **CI/CD**: Automated testing and deployment with GitHub Actions- **Amazon S3**
-
-- **Node.js 22.x**
-
-## Prerequisites- **Sharp (image processing library)**
-
-- **Serverless Framework**
-
-- Node.js 18.x or later
-
-- Docker and Docker Compose## 📂 Project Structure
-
-- Serverless Framework CLI```
-
-├── src/index.js       # Main Lambda code
-
-## Installation├── serverless.yml     # Serverless Framework configuration
-
-├── package.json       # Project dependencies
-
-1. Clone the repository:├── README.md          # Documentation
-
-```bash├── docker-compose.yml # Localstack configuration
-
-git clone <repository-url>```
-
-cd serverless-localstack-node
-
-```## 🔧 Setup and Deployment
-
-### Prerequisites
-
-2. Install dependencies:- AWS CLI configured with the necessary permissions.
-
-```bash- Node.js installed (recommended version 22.x).
-
-npm install- Serverless Framework installed (`npm install -g serverless`).
+## Project Structure
 
 ```
-
-### Serverless Configuration
-
-## Local Development1. Edit the `serverless.yml` file and set your S3 bucket name:
-
-```yml
-
-### 1. Start LocalStackprovider:
-
-  environment:
-
-Start the LocalStack container to emulate AWS services locally:    BUCKET_NAME: "s3-bucket"  # Replace with your S3 bucket name
-
+├── src/index.js          # Lambda handler
+├── serverless.yml        # Serverless Framework configuration
+├── docker-compose.yml    # LocalStack setup
+├── jest.config.json      # Unit test configuration
+├── jest.e2e.config.json  # E2E test configuration
+├── roles/
+│   ├── init-scripts.sh   # Bucket and IAM setup script
+│   ├── policy.json       # S3 IAM policy
+│   └── trust-policy.json # Lambda trust policy
+├── uploads/              # Sample image for local testing
+└── tests/
+    ├── index.test.js     # Unit tests (mocked AWS SDK)
+    └── e2e.test.js       # E2E tests (real LocalStack)
 ```
 
-```bash
+## Prerequisites
 
-docker-compose up -d2. Install project dependencies:
+- Node.js 20.x or later
+- Docker and Docker Compose
+- AWS CLI (for manual S3 operations)
+- Serverless Framework CLI (`npm install -g serverless`)
 
-``````sh
-
-npm install
-
-### 2. Deploy to LocalStack```
-
-3. Create policies and bucket (if needed):
-
-Deploy your serverless application to LocalStack:```sh
-
-./roles/iniinit-scripts.sh
-
-```bash```
-
-npm run deploy
-
-```### Deploying to AWS
-
-To deploy the Lambda function, run:
-
-### 3. Test the Function```sh
-
-npm run deploy
-
-Upload a test image to trigger the function:```
-
-This will deploy your function to AWS using the Serverless Framework.
-
-```bash
-
-# Test with a local eventAlternatively, if you want to deploy specifically to the production stage, use the following command:
-
-npm run test:offline```sh
-
-```npm run publish:aws
-
-```
-
-## Testing
-
-### Manual Testing
-
-Run the test suite:You can test the Lambda function locally by running the following:
+## Setup
 
 ```sh
+# 1. Install dependencies
+npm install
 
-```bashnpm run test:offline
+# 2. Start LocalStack
+docker compose up -d
 
-# Run tests```
-
-npm testThis will invoke the Lambda function locally using the event.json file as the input event. Make sure the event.json is correctly configured to match the structure of the events the Lambda function will receive from S3.
-
-
-
-# Run tests in watch modeTo test the Lambda function manually in AWS, upload an image to the uploads/ folder of your S3 bucket (replace s3-bucket with your actual bucket name):
-
-npm run test:watch```sh
-
-aws --endpoint-url=http://localhost:4566 s3 cp uploads/example-image.jpg s3://s3-bucket/uploads/example-image.jpg
-
-# Run tests with coverage```
-
-npm run test:coverageIf everything is configured correctly, the resized and indexed version of the image will be saved in the compressed/ folder within the same bucket.
-
+# 3. Create the S3 bucket and IAM resources
+./roles/init-scripts.sh
 ```
 
+## Running Tests
 
+### Unit tests (no Docker required)
+
+```sh
+npm test
+```
+
+### E2E tests (requires LocalStack running)
+
+```sh
+docker compose up -d
+npm run test:e2e
+```
+
+### Coverage report
+
+```sh
+npm run test:coverage
+```
+
+### Watch mode
+
+```sh
+npm run test:watch
+```
+
+## Local Deployment
+
+Deploy to LocalStack (uses `dev` stage):
+
+```sh
+npm run deploy
+```
+
+Invoke the function locally with a sample event:
+
+```sh
+npm run test:offline
+```
+
+Upload a test image to trigger the function:
+
+```sh
+aws --endpoint-url=http://localhost:4566 s3 cp uploads/example-image.jpg s3://s3-bucket/uploads/example-image.jpg
+```
+
+## Deploying to AWS
+
+```sh
+# Deploy to the default stage
+npm run deploy -- --stage prod
+
+# Or use the dedicated script
+npm run publish:aws
+```
+
+## Environment Variables
+
+| Variable | Description | Default |
+|---|---|---|
+| `BUCKET_NAME` | S3 bucket name | *(required)* |
+| `AWS_REGION` | AWS region | `eu-west-2` |
+| `AWS_ENDPOINT_URL` | Custom endpoint (LocalStack) | *(unset in production)* |
+
+## Linting
+
+```sh
+npm run lint        # check
+npm run lint:fix    # auto-fix
+```
 
 ## Code QualityIf you need to remove the service:
 

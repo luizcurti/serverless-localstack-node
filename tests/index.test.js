@@ -3,10 +3,8 @@ const { S3Client, GetObjectCommand, PutObjectCommand } = require('@aws-sdk/clien
 const sharp = require('sharp');
 const { handle } = require('../src/index');
 
-// Mock S3Client
 const s3Mock = mockClient(S3Client);
 
-// Mock Sharp
 jest.mock('sharp');
 
 describe('Lambda Handler', () => {
@@ -21,11 +19,9 @@ describe('Lambda Handler', () => {
   });
 
   test('should process S3 event and compress image', async () => {
-    // Mock image data
     const mockImageBuffer = Buffer.from('fake-image-data');
     const mockCompressedBuffer = Buffer.from('compressed-image-data');
 
-    // Mock S3 GetObject response
     const mockReadableStream = {
       on: jest.fn().mockImplementation((event, callback) => {
         if (event === 'data') {
@@ -44,7 +40,6 @@ describe('Lambda Handler', () => {
 
     s3Mock.on(PutObjectCommand).resolves({});
 
-    // Mock Sharp
     const mockSharpInstance = {
       resize: jest.fn().mockReturnThis(),
       toFormat: jest.fn().mockReturnThis(),
@@ -53,7 +48,6 @@ describe('Lambda Handler', () => {
 
     sharp.mockReturnValue(mockSharpInstance);
 
-    // Test event
     const event = {
       Records: [
         {
@@ -66,14 +60,10 @@ describe('Lambda Handler', () => {
       ]
     };
 
-    // Execute handler
     await handle(event);
 
-    // Verify S3 calls
     expect(s3Mock.commandCalls(GetObjectCommand)).toHaveLength(1);
     expect(s3Mock.commandCalls(PutObjectCommand)).toHaveLength(1);
-
-    // Verify Sharp calls
     expect(sharp).toHaveBeenCalledWith(mockImageBuffer);
     expect(mockSharpInstance.resize).toHaveBeenCalledWith({
       width: 1280,
@@ -85,7 +75,6 @@ describe('Lambda Handler', () => {
       quality: 50
     });
 
-    // Verify PutObject was called with correct parameters
     const putObjectCall = s3Mock.commandCalls(PutObjectCommand)[0];
     expect(putObjectCall.args[0].input).toMatchObject({
       Bucket: 'test-bucket',
@@ -110,7 +99,6 @@ describe('Lambda Handler', () => {
       ]
     };
 
-    // Bug fix: handler agora lança o erro diretamente (sem engolir)
     await expect(handle(event)).rejects.toThrow('Bucket not defined in environment variables.');
   });
 
@@ -131,7 +119,6 @@ describe('Lambda Handler', () => {
 
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
 
-    // Bug fix: handler agora lança erro agregado (não engole mais)
     await expect(handle(event)).rejects.toThrow('Failed to process 1 of 1 image(s)');
 
     expect(consoleSpy).toHaveBeenCalledWith(
@@ -192,7 +179,6 @@ describe('Lambda Handler', () => {
 
     await handle(event);
 
-    // Should process both images
     expect(s3Mock.commandCalls(GetObjectCommand)).toHaveLength(2);
     expect(s3Mock.commandCalls(PutObjectCommand)).toHaveLength(2);
   });
@@ -232,10 +218,8 @@ describe('Lambda Handler', () => {
     };
     sharp.mockReturnValue(mockSharpInstance);
 
-    // Chave com '+' (espaço URL-encoded)
     await handle({ Records: [{ s3: { object: { key: 'uploads/my+image.jpg' } } }] });
 
-    // GetObject deve ser chamado com a chave decodificada (espaço real)
     const getCall = s3Mock.commandCalls(GetObjectCommand)[0];
     expect(getCall.args[0].input.Key).toBe('uploads/my image.jpg');
   });
@@ -264,7 +248,6 @@ describe('Lambda Handler', () => {
 
     await handle({ Records: [{ s3: { object: { key: 'uploads/photo.png' } } }] });
 
-    // PNG de entrada deve gerar compressed/photo.jpg (não .png)
     const putCall = s3Mock.commandCalls(PutObjectCommand)[0];
     expect(putCall.args[0].input.Key).toBe('compressed/photo.jpg');
     expect(putCall.args[0].input.ContentType).toBe('image/jpeg');

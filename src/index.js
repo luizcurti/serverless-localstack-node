@@ -3,8 +3,6 @@ const { S3Client, GetObjectCommand, PutObjectCommand } = require('@aws-sdk/clien
 const sharp = require('sharp');
 const { basename, extname } = require('path');
 
-// Bug fix: endpoint LocalStack era hardcoded — quebra em produção.
-// Usar AWS_ENDPOINT_URL apenas quando definido (local/dev).
 const clientOptions = {
   region: process.env.AWS_REGION || 'eu-west-2',
   forcePathStyle: true
@@ -28,14 +26,11 @@ const streamToBuffer = (stream) => {
 };
 
 exports.handle = async (event) => {
-  // Bug fix: bucket check fora do try/catch — deve falhar imediatamente e visualmente.
   const bucket = process.env.BUCKET_NAME;
   if (!bucket) {
     throw new Error('Bucket not defined in environment variables.');
   }
 
-  // Bug fix: Promise.all aborta o batch inteiro se 1 imagem falha.
-  // Promise.allSettled processa todas as imagens e coleta falhas individuais.
   const results = await Promise.allSettled(
     event.Records.map(async (record) => {
       const key = decodeURIComponent(record.s3.object.key.replace(/\+/g, ' '));
@@ -82,8 +77,6 @@ exports.handle = async (event) => {
     })
   );
 
-  // Bug fix: erros eram apenas logados — Lambda reportava sucesso mesmo com falha.
-  // Agora relança o erro para que AWS possa retentar e alarmar corretamente.
   const failures = results.filter(r => r.status === 'rejected');
   if (failures.length > 0) {
     failures.forEach(f => console.error('Error processing image:', f.reason));

@@ -1,15 +1,3 @@
-/**
- * Testes E2E: Lambda Handler contra LocalStack real
- *
- * Pré-requisito: LocalStack rodando
- *   docker compose up -d
- *
- * Rodar com:
- *   npm run test:e2e
- */
-
-// Definir vars de ambiente ANTES de qualquer require para que
-// o S3Client em src/index.js use o endpoint correto ao ser carregado.
 process.env.AWS_ENDPOINT_URL = 'http://localhost:4566';
 process.env.AWS_REGION = 'eu-west-2';
 process.env.BUCKET_NAME = 's3-bucket';
@@ -40,8 +28,6 @@ const s3 = new S3Client({
     secretAccessKey: 'test'
   }
 });
-
-// ─── helpers ─────────────────────────────────────────────────────────────────
 
 const makeEvent = (key) => ({
   Records: [{ s3: { object: { key } } }]
@@ -74,22 +60,17 @@ async function deleteObjects (keys) {
   );
 }
 
-// ─── setup/teardown ───────────────────────────────────────────────────────────
-
 beforeAll(async () => {
-  // Verificar se o S3 está acessível com um request real (o health check do
-  // LocalStack Pro retorna "running" em vez de "available", então não é confiável)
   try {
     await s3.send(new CreateBucketCommand({
       Bucket: BUCKET,
       CreateBucketConfiguration: { LocationConstraint: REGION }
     }));
   } catch (err) {
-    // Bucket já existe — ok para re-runs
     const EXPECTED = ['BucketAlreadyOwnedByYou', 'BucketAlreadyExists', 'IllegalLocationConstraintException'];
     if (!EXPECTED.includes(err.name)) {
       throw new Error(
-        `LocalStack não está acessível. Inicie com:\n  docker compose up -d\n\nErro original: ${err.message}`
+        `LocalStack is not accessible. Start it with:\n  docker compose up -d\n\nOriginal error: ${err.message}`
       );
     }
   }
@@ -106,10 +87,8 @@ afterEach(async () => {
   ]);
 });
 
-// ─── testes ──────────────────────────────────────────────────────────────────
-
-describe('E2E: Lambda Handler com LocalStack', () => {
-  test('deve comprimir imagem JPG e salvar em compressed/', async () => {
+describe('E2E: Lambda Handler with LocalStack', () => {
+  test('should compress JPG and save to compressed/', async () => {
     await uploadTestImage('uploads/e2e-jpg-test.jpg');
 
     await handle(makeEvent('uploads/e2e-jpg-test.jpg'));
@@ -117,27 +96,23 @@ describe('E2E: Lambda Handler com LocalStack', () => {
     expect(await objectExists('compressed/e2e-jpg-test.jpg')).toBe(true);
   });
 
-  test('deve converter PNG para JPG e salvar em compressed/', async () => {
-    // Envia conteúdo JPEG com extensão .png (sharp usa o buffer, não a extensão)
+  test('should convert PNG to JPG and save to compressed/', async () => {
     await uploadTestImage('uploads/e2e-png-test.png');
 
     await handle(makeEvent('uploads/e2e-png-test.png'));
 
-    // Saída deve ser .jpg independente da extensão de entrada
     expect(await objectExists('compressed/e2e-png-test.jpg')).toBe(true);
   });
 
-  test('deve decodificar chave URL-encoded (+ como espaço)', async () => {
-    // Chave real no S3 tem espaço
+  test('should decode URL-encoded key (+ as space)', async () => {
     await uploadTestImage('uploads/e2e encoded.jpg');
 
-    // Evento S3 codifica espaços como +
     await handle(makeEvent('uploads/e2e+encoded.jpg'));
 
     expect(await objectExists('compressed/e2e encoded.jpg')).toBe(true);
   });
 
-  test('deve processar múltiplas imagens em um único evento', async () => {
+  test('should process multiple images in a single event', async () => {
     await Promise.all([
       uploadTestImage('uploads/e2e-jpg-test.jpg'),
       uploadTestImage('uploads/e2e-png-test.png')
@@ -154,17 +129,15 @@ describe('E2E: Lambda Handler com LocalStack', () => {
     expect(await objectExists('compressed/e2e-png-test.jpg')).toBe(true);
   });
 
-  test('deve rejeitar quando o objeto S3 não existe', async () => {
-    // Objeto nunca foi enviado ao bucket
+  test('should reject when S3 object does not exist', async () => {
     await expect(
       handle(makeEvent('uploads/nonexistent-file.jpg'))
     ).rejects.toThrow('Failed to process 1 of 1 image(s)');
   });
 
-  test('deve ignorar silenciosamente arquivos com extensão não suportada', async () => {
+  test('should silently skip files with unsupported extension', async () => {
     const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
 
-    // .gif não está na allow-list
     await handle(makeEvent('uploads/document.gif'));
 
     expect(consoleSpy).toHaveBeenCalledWith(
@@ -173,7 +146,7 @@ describe('E2E: Lambda Handler com LocalStack', () => {
     consoleSpy.mockRestore();
   });
 
-  test('deve lançar erro imediato quando BUCKET_NAME não está definido', async () => {
+  test('should throw immediately when BUCKET_NAME is not defined', async () => {
     const original = process.env.BUCKET_NAME;
     delete process.env.BUCKET_NAME;
 

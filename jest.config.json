@@ -4,6 +4,10 @@
     "**/tests/**/*.test.js",
     "**/tests/**/*.spec.js"
   ],
+  "testPathIgnorePatterns": [
+    "/node_modules/",
+    "/tests/e2e.test.js"
+  ],
   "collectCoverageFrom": [
     "src/**/*.js",
     "!src/**/*.test.js"

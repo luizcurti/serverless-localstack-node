@@ -8,18 +8,20 @@ provider:
   region: eu-west-2
   environment:
     BUCKET_NAME: s3-bucket
-  iamRoleStatements:
-    - Effect: Allow
-      Action:
-        - s3:GetObject
-        - s3:PutObject
-      Resource:
-        - "arn:aws:s3:::s3-bucket/*"
-    - Effect: Allow
-      Action:
-        - s3:ListBucket
-      Resource:
-        - "arn:aws:s3:::s3-bucket"
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - s3:GetObject
+            - s3:PutObject
+          Resource:
+            - "arn:aws:s3:::s3-bucket/*"
+        - Effect: Allow
+          Action:
+            - s3:ListBucket
+          Resource:
+            - "arn:aws:s3:::s3-bucket"
 
 plugins:
   - serverless-offline
@@ -63,6 +65,12 @@ functions:
           rules:
             - prefix: uploads/
             - suffix: .png
+      - s3:
+          bucket: ${self:provider.environment.BUCKET_NAME}
+          event: s3:ObjectCreated:*
+          rules:
+            - prefix: uploads/
+            - suffix: .jpeg
 
 resources:
   Resources:

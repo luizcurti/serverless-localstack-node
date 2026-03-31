@@ -110,17 +110,8 @@ describe('Lambda Handler', () => {
       ]
     };
 
-    // Should not throw error, but should log error
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-
-    await handle(event);
-
-    expect(consoleSpy).toHaveBeenCalledWith(
-      'Error processing images:',
-      expect.any(Error)
-    );
-
-    consoleSpy.mockRestore();
+    // Bug fix: handler agora lança o erro diretamente (sem engolir)
+    await expect(handle(event)).rejects.toThrow('Bucket not defined in environment variables.');
   });
 
   test('should handle S3 GetObject error', async () => {
@@ -140,10 +131,11 @@ describe('Lambda Handler', () => {
 
     const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
 
-    await handle(event);
+    // Bug fix: handler agora lança erro agregado (não engole mais)
+    await expect(handle(event)).rejects.toThrow('Failed to process 1 of 1 image(s)');
 
     expect(consoleSpy).toHaveBeenCalledWith(
-      'Error processing images:',
+      'Error processing image:',
       expect.any(Error)
     );
 
@@ -203,5 +195,78 @@ describe('Lambda Handler', () => {
     // Should process both images
     expect(s3Mock.commandCalls(GetObjectCommand)).toHaveLength(2);
     expect(s3Mock.commandCalls(PutObjectCommand)).toHaveLength(2);
+  });
+
+  test('should throw when data.Body is null (object empty)', async () => {
+    s3Mock.on(GetObjectCommand).resolves({ Body: null });
+
+    const event = {
+      Records: [{ s3: { object: { key: 'uploads/empty.jpg' } } }]
+    };
+
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+    await expect(handle(event)).rejects.toThrow('Failed to process 1 of 1 image(s)');
+    expect(consoleSpy).toHaveBeenCalledWith('Error processing image:', expect.any(Error));
+    consoleSpy.mockRestore();
+  });
+
+  test('should decode URL-encoded key (+ as space)', async () => {
+    const mockImageBuffer = Buffer.from('fake-image-data');
+    const mockCompressedBuffer = Buffer.from('compressed-image-data');
+
+    const mockReadableStream = {
+      on: jest.fn().mockImplementation((event, callback) => {
+        if (event === 'data') callback(mockImageBuffer);
+        if (event === 'end') callback();
+        return mockReadableStream;
+      })
+    };
+
+    s3Mock.on(GetObjectCommand).resolves({ Body: mockReadableStream });
+    s3Mock.on(PutObjectCommand).resolves({});
+
+    const mockSharpInstance = {
+      resize: jest.fn().mockReturnThis(),
+      toFormat: jest.fn().mockReturnThis(),
+      toBuffer: jest.fn().mockResolvedValue(mockCompressedBuffer)
+    };
+    sharp.mockReturnValue(mockSharpInstance);
+
+    // Chave com '+' (espaço URL-encoded)
+    await handle({ Records: [{ s3: { object: { key: 'uploads/my+image.jpg' } } }] });
+
+    // GetObject deve ser chamado com a chave decodificada (espaço real)
+    const getCall = s3Mock.commandCalls(GetObjectCommand)[0];
+    expect(getCall.args[0].input.Key).toBe('uploads/my image.jpg');
+  });
+
+  test('should save PNG as .jpg in compressed/ prefix', async () => {
+    const mockImageBuffer = Buffer.from('fake-image-data');
+    const mockCompressedBuffer = Buffer.from('compressed-image-data');
+
+    const mockReadableStream = {
+      on: jest.fn().mockImplementation((event, callback) => {
+        if (event === 'data') callback(mockImageBuffer);
+        if (event === 'end') callback();
+        return mockReadableStream;
+      })
+    };
+
+    s3Mock.on(GetObjectCommand).resolves({ Body: mockReadableStream });
+    s3Mock.on(PutObjectCommand).resolves({});
+
+    const mockSharpInstance = {
+      resize: jest.fn().mockReturnThis(),
+      toFormat: jest.fn().mockReturnThis(),
+      toBuffer: jest.fn().mockResolvedValue(mockCompressedBuffer)
+    };
+    sharp.mockReturnValue(mockSharpInstance);
+
+    await handle({ Records: [{ s3: { object: { key: 'uploads/photo.png' } } }] });
+
+    // PNG de entrada deve gerar compressed/photo.jpg (não .png)
+    const putCall = s3Mock.commandCalls(PutObjectCommand)[0];
+    expect(putCall.args[0].input.Key).toBe('compressed/photo.jpg');
+    expect(putCall.args[0].input.ContentType).toBe('image/jpeg');
   });
 });

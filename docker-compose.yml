@@ -6,16 +6,18 @@ services:
       - DOCKER_HOST=unix:///var/run/docker.sock
       - AWS_DEFAULT_REGION=eu-west-2
       - SERVICES=s3,lambda,logs,iam,cloudformation,ssm
-      - EDGE_PORT=4566
-      - LAMBDA_EXECUTOR=docker 
+      # EDGE_PORT e LAMBDA_EXECUTOR foram removidos no LocalStack 2+
       - DEBUG=1
       - DATA_DIR=/var/lib/localstack/data
+      # Permite rodar LocalStack Community sem auth token até a data de snooze
+      - LOCALSTACK_ACKNOWLEDGE_ACCOUNT_REQUIREMENT=1
     ports:
-      - "4566:4566" 
-      - "4571:4571" 
+      - "4566:4566"
     volumes:
-      - "/var/run/docker.sock:/var/run/docker.sock" 
-      - "./localstack:/var/lib/localstack" 
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./localstack:/var/lib/localstack"
+      # init-scripts.sh é executado automaticamente quando o LocalStack estiver pronto
+      - "./roles/init-scripts.sh:/etc/localstack/init/ready.d/01-init.sh"
     networks:
       - localstack_network
 

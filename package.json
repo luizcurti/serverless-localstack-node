@@ -10,6 +10,7 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:offline": "serverless invoke local --function index --path event.json",
+    "test:e2e": "jest --config jest.e2e.config.json --verbose",
     "lint": "eslint src/ tests/",
     "lint:fix": "eslint src/ tests/ --fix",
     "publish:aws": "serverless deploy --stage prod",
